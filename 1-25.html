@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1-25 </title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Base styles for the flip card functionality */
+        .flip-card {
+            perspective: 1000px;
+        }
+
+        .flip-card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            backface-visibility: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Styles for answer options */
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style to disable pointer events after an answer is selected */
+        .options-container.disabled .option-card {
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Style for the correct answer (green) */
+        .correct-answer {
+            border-color: #10b981 !important;
+            background-color: #ecfdf5 !important;
+            border-width: 2px;
+        }
+
+        /* Style for an incorrect answer (red) */
+        .incorrect-answer {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+            border-width: 2px;
+        }
+
+        .answer-dot {
+            transition: all 0.3s ease;
+        }
+
+        .option-card.selected .answer-dot {
+            background-color: #4f46e5;
+            transform: scale(1.2);
+        }
+
+        .progress-transition {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h1 id="appTitle" class="text-3xl font-bold text-indigo-700">نظام الأسئلة التفاعلية</h1>
+            <div class="flex justify-center gap-4 mt-4">
+                <button id="toggleLang"
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i id="langIcon" class="fas fa-language mr-2"></i>
+                    <span id="langText">تبديل اللغة</span>
+                </button>
+                <button id="resetProgress"
+                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i class="fas fa-redo mr-2"></i>
+                    <span id="resetText">إعادة البدء</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="max-w-3xl mx-auto">
+            <!-- Progress Bar -->
+            <div class="mb-6">
+                <div class="flex justify-between mb-2">
+                    <span id="progressText" class="font-medium">التقدم: 0/0</span>
+                    <!-- Score text removed as per request -->
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full progress-transition"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div id="questionCard" class="flip-card bg-white rounded-xl shadow-md overflow-hidden mb-6 min-h-[600px]">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <span id="questionNumber"
+                                class="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full">سؤال
+                                1</span>
+                            <button id="flipCardBtn" class="text-gray-500 hover:text-indigo-600 flex items-center">
+                                <i class="fas fa-exchange-alt mr-1"></i>
+                                <span id="flipText">عرض الترجمة</span>
+                            </button>
+                        </div>
+                        <h2 id="questionText" class="text-xl font-semibold text-gray-800 mb-6"></h2>
+                        <div id="optionsContainer" class="grid gap-4"></div>
+                    </div>
+                    <div class="flip-card-back p-6 bg-indigo-50 h-full">
+                        <div class="flex justify-between items-start mb-4">
+                            <span id="translatedQuestionNumber"
+                                class="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full">Question
+                                1</span>
+                            <button id="flipCardBackBtn" class="text-gray-500 hover:text-indigo-600 flex items-center">
+                                <i class="fas fa-exchange-alt mr-1"></i>
+                                <span id="flipBackText">عرض الأصل</span>
+                            </button>
+                        </div>
+                        <h2 id="translatedQuestionText" class="text-xl font-semibold text-gray-800 mb-6"></h2>
+                        <div id="translatedOptionsContainer" class="grid gap-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex justify-between">
+                <button id="prevBtn"
+                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition disabled:opacity-50 flex items-center"
+                    disabled>
+                    <i id="prevIcon" class="fas fa-arrow-right mr-2"></i>
+                    <span id="prevText">السابق</span>
+                </button>
+                <button id="nextBtn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <span id="nextText">التالي</span>
+                    <i id="nextIcon" class="fas fa-arrow-left ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Questions data
+        const questionsData = {
+            "questions": [
+                {
+                    "id": 1,
+                    "question": "ما الفرق بين الانحدار الخطي البسيط والانحدار الخطي المتعدد؟",
+                    "options": [
+                        "الانحدار الخطي البسيط له متغير مستقل واحد بينما الانحدار الخطي المتعدد له متغيرات مستقلة متعددة",
+                        "الانحدار الخطي البسيط له متغير تابع واحد بينما الانحدار الخطي المتعدد له متغيرات تابعة متعددة",
+                        "الانحدار الخطي البسيط يستخدم النزول التدريجي بينما الانحدار الخطي المتعدد يستخدم المعادلة العادية",
+                        "الانحدار الخطي البسيط يفترض التوزيع الطبيعي بينما الانحدار الخطي المتعدد يفترض تجانس التباين"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "الانحدار الخطي",
+                    "translated": {
+                        "question": "What is the difference between simple linear regression and multiple linear regression?",
+                        "options": [
+                            "Simple linear regression has one independent variable while multiple linear regression has multiple independent variables",
+                            "Simple linear regression has one dependent variable while multiple linear regression has multiple dependent variables",
+                            "Simple linear regression uses gradient descent while multiple linear regression uses the normal equation",
+                            "Simple linear regression assumes normal distribution while multiple linear regression assumes homoscedasticity"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Linear Regression"
+                    }
+                },
+                {
+                    "id": 2,
+                    "question": "ما هو مقياس التقييم الشائع المستخدم لتقييم أداء نماذج الانحدار الخطي؟",
+                    "options": [
+                        "R-squared",
+                        "Mean squared error",
+                        "Mean absolute error",
+                        "جميع الخيارات"
+                    ],
+                    "correctAnswer": 3,
+                    "keyword": "مقاييس التقييم",
+                    "translated": {
+                        "question": "Which evaluation metric is commonly used to assess the performance of linear regression models?",
+                        "options": [
+                            "R-squared",
+                            "Mean squared error",
+                            "Mean absolute error",
+                            "All of the options"
+                        ],
+                        "correctAnswer": 3,
+                        "keyword": "Evaluation Metrics"
+                    }
+                },
+                {
+                    "id": 3,
+                    "question": "ماذا تشير القيمة الصغيرة لخطأ المتوسط المطلق (MAE) في تقييم الانحدار الخطي؟",
+                    "options": [
+                        "الانحدار الخطي يوفر تنبؤات دقيقة للقيم المستقبلية",
+                        "الانحدار الخطي يبالغ في ملاءمة البيانات",
+                        "الانحدار الخطي لا يلائم البيانات بشكل كاف",
+                        "خطأ المتوسط المطلق (MAE) لا يوفر أي تفسير ذو معنى"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "خطأ المتوسط المطلق",
+                    "translated": {
+                        "question": "What does a small value of Mean Absolute Error (MAE) indicate in the evaluation of linear regression?",
+                        "options": [
+                            "Linear regression provides accurate predictions of future values",
+                            "Linear regression is overfitting the data",
+                            "Linear regression is underfitting the data",
+                            "Mean Absolute Error (MAE) does not provide any meaningful interpretation"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Mean Absolute Error"
+                    }
+                },
+                {
+                    "id": 4,
+                    "question": "ما هو جذر متوسط الخطأ التربيعي (RMSE)؟",
+                    "options": [
+                        "الجذر التربيعي لخطأ المتوسط المطلق",
+                        "الجذر التربيعي لمتوسط الخطأ التربيعي",
+                        "متوسط الفرق بين القيم المتوقعة والفعلية",
+                        "الانحراف المعياري للبقايا"
+                    ],
+                    "correctAnswer": 1,
+                    "keyword": "جذر متوسط الخطأ التربيعي",
+                    "translated": {
+                        "question": "What is the Root Mean Square Error (RMSE)?",
+                        "options": [
+                            "The square root of the mean absolute error",
+                            "The square root of the mean squared error",
+                            "The average difference between predicted and actual values",
+                            "The standard deviation of the residuals"
+                        ],
+                        "correctAnswer": 1,
+                        "keyword": "RMSE"
+                    }
+                },
+                {
+                    "id": 5,
+                    "question": "ما الذي يقيسه جذر متوسط الخطأ التربيعي (RMSE) في الانحدار الخطي؟",
+                    "options": [
+                        "تغيرية الأخطاء",
+                        "متوسط الفرق بين القيم المتوقعة والفعلية",
+                        "نسبة المتغير التابع المفسرة بواسطة المتغيرات المستقلة",
+                        "الانحراف المعياري للبقايا"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "قياس الأخطاء",
+                    "translated": {
+                        "question": "What does the Root Mean Square Error (RMSE) measure in linear regression?",
+                        "options": [
+                            "The variability of the errors",
+                            "The average difference between predicted and actual values",
+                            "The proportion of the dependent variable explained by the independent variables",
+                            "The standard deviation of the residuals"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Error Measurement"
+                    }
+                },
+                {
+                    "id": 6,
+                    "question": "ما هو الهدف الرئيسي للانحدار اللوجستي في تعلم الآلة؟",
+                    "options": [
+                        "تصنيف البيانات إلى فئات مختلفة",
+                        "قياس قوة العلاقة بين المتغيرات",
+                        "تصغير الأخطاء بين القيم المتوقعة والفعلية",
+                        "معالجة العلاقات غير الخطية في البيانات"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "الانحدار اللوجستي",
+                    "translated": {
+                        "question": "What is the main objective of logistic regression in machine learning?",
+                        "options": [
+                            "To classify data into different categories",
+                            "To measure the strength of the relationship between variables",
+                            "To minimize the errors between predicted and actual values",
+                            "To handle nonlinear relationships in data"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Logistic Regression"
+                    }
+                },
+                {
+                    "id": 7,
+                    "question": "ما هي AUC؟",
+                    "options": [
+                        "المساحة تحت منحنى ROC التي تقيس الأداء العام لنموذج التصنيف",
+                        "دقة النموذج في التنبؤ بالحالات الإيجابية",
+                        "نسبة السلبيات الحقيقية في مجموعة البيانات"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "AUC",
+                    "translated": {
+                        "question": "What is the AUC?",
+                        "options": [
+                            "The area under the ROC curve which measures the overall performance of the classification model",
+                            "The accuracy of the model in predicting positive cases",
+                            "The proportion of true negatives in the dataset"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "AUC"
+                    }
+                },
+                {
+                    "id": 8,
+                    "question": "ما هي أنواع درجات F1 المختلفة في التصنيف متعدد الفئات؟",
+                    "options": [
+                        "Micro F1، Macro F1، و Weighted F1",
+                        "Precision F1، Recall F1، و Accuracy F1",
+                        "Logistic F1، Decision Tree F1، و Support Vector Machine F1"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "درجات F1",
+                    "translated": {
+                        "question": "What are the different types of F1 scores in multiclass classification?",
+                        "options": [
+                            "Micro F1, Macro F1, and Weighted F1",
+                            "Precision F1, Recall F1, and Accuracy F1",
+                            "Logistic F1, Decision Tree F1, and Support Vector Machine F1"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "F1 Scores"
+                    }
+                },
+                {
+                    "id": 9,
+                    "question": "ما الذي يقيسه Micro F1 في التصنيف متعدد الفئات؟",
+                    "options": [
+                        "الأداء العام لنموذج التصنيف",
+                        "التوازن بين الدقة والاستدعاء",
+                        "دقة النموذج في التنبؤ بالحالات الإيجابية",
+                        "نسبة السلبيات الحقيقية في مجموعة البيانات"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "Micro F1",
+                    "translated": {
+                        "question": "What does the Micro F1 measure in multiclass classification?",
+                        "options": [
+                            "The overall performance of the classification model",
+                            "The trade-off between precision and recall",
+                            "The accuracy of the model in predicting positive cases",
+                            "The proportion of true negatives in the dataset"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Micro F1"
+                    }
+                },
+                {
+                    "id": 10,
+                    "question": "ما الذي يقيسه Macro F1 في التصنيف متعدد الفئات؟",
+                    "options": [
+                        "متوسط أداء نموذج التصنيف عبر جميع الفئات",
+                        "التوازن بين الدقة والاستدعاء",
+                        "دقة النموذج في التنبؤ بالحالات الإيجابية",
+                        "نسبة السلبيات الحقيقية في مجموعة البيانات"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "Macro F1",
+                    "translated": {
+                        "question": "What does the Macro F1 measure in multiclass classification?",
+                        "options": [
+                            "The average performance of the classification model across all classes",
+                            "The trade-off between precision and recall",
+                            "The accuracy of the model in predicting positive cases",
+                            "The proportion of true negatives in the dataset"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Macro F1"
+                    }
+                },
+                {
+                    "id": 11,
+                    "question": "ما الذي يقيسه Weighted F1 في التصنيف متعدد الفئات؟",
+                    "options": [
+                        "أداء نموذج التصنيف، مرجحًا بتكرار الفئات",
+                        "التوازن بين الدقة والاستدعاء",
+                        "دقة النموذج في التنبؤ بالحالات الإيجابية",
+                        "نسبة السلبيات الحقيقية في مجموعة البيانات"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "Weighted F1",
+                    "translated": {
+                        "question": "What does the Weighted F1 measure in multiclass classification?",
+                        "options": [
+                            "The performance of the classification model, weighted by class frequencies",
+                            "The trade-off between precision and recall",
+                            "The accuracy of the model in predicting positive cases",
+                            "The proportion of true negatives in the dataset"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Weighted F1"
+                    }
+                },
+                {
+                    "id": 12,
+                    "question": "كيف يمكنك حساب مقاييس الأداء في بايثون للتصنيف متعدد الفئات؟",
+                    "options": [
+                        "باستخدام دالة classification_report من scikit-learn",
+                        "بحساب متوسط الخطأ التربيعي للنموذج",
+                        "بتجهيز نموذج انحدار لوجستي",
+                        "برسم منحنى ROC"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "مقاييس الأداء",
+                    "translated": {
+                        "question": "How can you calculate performance metrics in Python for multiclass classification?",
+                        "options": [
+                            "By using scikit-learn's classification_report function",
+                            "By calculating the mean squared error of the model",
+                            "By fitting a logistic regression model",
+                            "By plotting a ROC curve"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Performance Metrics"
+                    }
+                },
+                {
+                    "id": 13,
+                    "question": "ما هو دور الانتروبيا في تصنيف شجرة القرار؟",
+                    "options": [
+                        "تقيس عدم النقاء أو العشوائية في مجموعة البيانات",
+                        "تحدد مكسب المعلومات لكل خاصية",
+                        "تحسب دقة نموذج التصنيف",
+                        "تعالج البيانات لبناء شجرة القرار"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "الانتروبيا",
+                    "translated": {
+                        "question": "What is the role of entropy in decision tree classification?",
+                        "options": [
+                            "It measures the impurity or randomness in a dataset",
+                            "It determines the information gain of each feature",
+                            "It calculates the accuracy of the classification model",
+                            "It preprocesses the data for decision tree construction"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Entropy"
+                    }
+                },
+                {
+                    "id": 14,
+                    "question": "ما الذي يقيسه مكسب المعلومات في تصنيف شجرة القرار؟",
+                    "options": [
+                        "يقيس تخفيض الانتروبيا المتحقق عن طريق التقسيم على خاصية معينة",
+                        "يحدد دقة نموذج التصنيف",
+                        "يعالج البيانات لبناء شجرة القرار",
+                        "يقيس عدم النقاء أو العشوائية في مجموعة البيانات"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "مكسب المعلومات",
+                    "translated": {
+                        "question": "What does information gain measure in decision tree classification?",
+                        "options": [
+                            "It quantifies the reduction in entropy achieved by splitting on a feature",
+                            "It determines the accuracy of the classification model",
+                            "It preprocesses the data for decision tree construction",
+                            "It measures the impurity or randomness in a dataset"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Information Gain"
+                    }
+                },
+                {
+                    "id": 15,
+                    "question": "ما هو الغرض من حساب مقاييس التقييم في تقييم النموذج؟",
+                    "options": [
+                        "معالجة البيانات لبناء شجرة القرار",
+                        "تحديد دقة نموذج التصنيف",
+                        "تقييم أداء نموذج التصنيف",
+                        "قياس عدم النقاء أو العشوائية في مجموعة البيانات"
+                    ],
+                    "correctAnswer": 2,
+                    "keyword": "مقاييس التقييم",
+                    "translated": {
+                        "question": "What is the purpose of calculating evaluation metrics in model assessment?",
+                        "options": [
+                            "To preprocess the data for decision tree construction",
+                            "To determine the accuracy of the classification model",
+                            "To evaluate the performance of the classification model",
+                            "To measure the impurity or randomness in a dataset"
+                        ],
+                        "correctAnswer": 2,
+                        "keyword": "Evaluation Metrics"
+                    }
+                },
+                {
+                    "id": 16,
+                    "question": "ما هي الخطوة الأولى بعد فحص البيانات في تصنيف شجرة القرار؟",
+                    "options": [
+                        "المعالجة المسبقة للبيانات",
+                        "اختيار الخصائص",
+                        "تدريب النموذج",
+                        "حساب مقاييس التقييم"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "خطوات شجرة القرار",
+                    "translated": {
+                        "question": "In decision tree classification, what is the first step after data inspection?",
+                        "options": [
+                            "Data preprocessing",
+                            "Feature selection",
+                            "Model training",
+                            "Evaluation metrics calculation"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Decision Tree Steps"
+                    }
+                },
+                {
+                    "id": 17,
+                    "question": "ما هو المصطلح المستخدم لوصف المعالجة الأولية للبيانات في تصنيف شجرة القرار؟",
+                    "options": [
+                        "المعالجة المسبقة للبيانات",
+                        "هندسة الخصائص",
+                        "تحقق النموذج",
+                        "ضبط المعلمات الفائقة"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "المعالجة المسبقة",
+                    "translated": {
+                        "question": "What term is used to describe the initial processing of data in decision tree classification?",
+                        "options": [
+                            "Data preprocessing",
+                            "Feature engineering",
+                            "Model validation",
+                            "Hyperparameter tuning"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Data Preprocessing"
+                    }
+                },
+                {
+                    "id": 18,
+                    "question": "ما هي عملية تقسيم البيانات إلى مجموعات تدريب واختبار؟",
+                    "options": [
+                        "تقسيم البيانات",
+                        "تقييم النموذج",
+                        "تقسيم التدريب-الاختبار",
+                        "التحقق المتقاطع"
+                    ],
+                    "correctAnswer": 2,
+                    "keyword": "تقسيم البيانات",
+                    "translated": {
+                        "question": "What is the process of dividing data into training and testing sets called?",
+                        "options": [
+                            "Data splitting",
+                            "Model assessment",
+                            "Train-test split",
+                            "Cross-validation"
+                        ],
+                        "correctAnswer": 2,
+                        "keyword": "Data Splitting"
+                    }
+                },
+                {
+                    "id": 19,
+                    "question": "ما هو الهدف الأساسي من بناء شجرة القرار؟",
+                    "options": [
+                        "حساب مقاييس التقييم",
+                        "تعلم قواعد التصنيف",
+                        "اختيار الخصائص",
+                        "حفظ النموذج المتعلم"
+                    ],
+                    "correctAnswer": 1,
+                    "keyword": "هدف شجرة القرار",
+                    "translated": {
+                        "question": "What is the primary goal of decision tree construction?",
+                        "options": [
+                            "Calculating evaluation metrics",
+                            "Learning classification rules",
+                            "Feature selection",
+                            "Model saving"
+                        ],
+                        "correctAnswer": 1,
+                        "keyword": "Decision Tree Goal"
+                    }
+                },
+                {
+                    "id": 20,
+                    "question": "ما هو المصطلح المستخدم لإزالة الفروع غير الضرورية من شجرة القرار؟",
+                    "options": [
+                        "التقليم",
+                        "التقسيم",
+                        "اختيار الخصائص",
+                        "حساب مقاييس التقييم"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "تقليم الشجرة",
+                    "translated": {
+                        "question": "What is the term for removing unnecessary branches from a decision tree?",
+                        "options": [
+                            "Pruning",
+                            "Splitting",
+                            "Feature selection",
+                            "Evaluation metrics calculation"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Tree Pruning"
+                    }
+                },
+                {
+                    "id": 21,
+                    "question": "ما هي الخطوة التي تأتي بعد المعالجة المسبقة للبيانات في تصنيف شجرة القرار؟",
+                    "options": [
+                        "بناء نموذج التصنيف",
+                        "حساب مقاييس التقييم",
+                        "اختيار الخصائص",
+                        "حفظ النموذج المتعلم"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "خطوات التصنيف",
+                    "translated": {
+                        "question": "Which step comes after data preprocessing in decision tree classification?",
+                        "options": [
+                            "Building the classification model",
+                            "Calculating evaluation metrics",
+                            "Feature selection",
+                            "Saving the learned model"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Classification Steps"
+                    }
+                },
+                {
+                    "id": 22,
+                    "question": "ما هو الغرض من اختيار الخصائص في شجرة القرار؟",
+                    "options": [
+                        "تحسين أداء النموذج عن طريق اختيار الخصائص الأكثر أهمية",
+                        "زيادة تعقيد النموذج",
+                        "تقليل دقة التصنيف",
+                        "زيادة وقت التدريب"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "اختيار الخصائص",
+                    "translated": {
+                        "question": "What is the purpose of feature selection in decision tree?",
+                        "options": [
+                            "To improve model performance by selecting the most important features",
+                            "To increase model complexity",
+                            "To reduce classification accuracy",
+                            "To increase training time"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Feature Selection"
+                    }
+                },
+                {
+                    "id": 23,
+                    "question": "ما هو الغرض من التحقق المتقاطع في تقييم النموذج؟",
+                    "options": [
+                        "تقييم أداء نموذج التصنيف على مجموعات فرعية متعددة من البيانات",
+                        "المعالجة المسبقة للبيانات",
+                        "تحديد مكسب المعلومات",
+                        "حفظ النموذج المتعلم"
+                    ],
+                    "correctAnswer": 0,
+                    "keyword": "التحقق المتقاطع",
+                    "translated": {
+                        "question": "What is the purpose of cross-validation in model assessment?",
+                        "options": [
+                            "To evaluate the performance of the classification model on multiple subsets of the data",
+                            "To preprocess the data",
+                            "To determine the information gain",
+                            "To save the learned model"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Cross-Validation"
+                    }
+                },
+                {
+                    "id": 24,
+                    "question": "ما هو المصطلح المستخدم لتعيين تسميات الفئات للحالات الجديدة باستخدام نموذج مدرب؟",
+                    "options": [
+                        "المعالجة المسبقة للبيانات",
+                        "بناء شجرة القرار",
+                        "تقييم النموذج",
+                        "التصنيف"
+                    ],
+                    "correctAnswer": 3,
+                    "keyword": "تعيين التصنيفات",
+                    "translated": {
+                        "question": "What is the term for assigning class labels to new instances using a trained model?",
+                        "options": [
+                            "Data preprocessing",
+                            "Decision tree construction",
+                            "Model assessment",
+                            "Classification"
+                        ],
+                        "correctAnswer": 3,
+                        "keyword": "Classification"
+                    }
+                },
+                {
+                    "id": 25,
+                    "question": "أي مقياس يستخدم لتحديد مدى إثارة قاعدة الارتباط بناءً على نسبة الدعم الملاحظ إلى المتوقع؟",
+                    "options": [
+                        "الثقة",
+                        "الرفع",
+                        "مقياس كولكزينسكي",
+                        "معامل جاكارد"
+                    ],
+                    "correctAnswer": 2,
+                    "keyword": "قواعد الارتباط",
+                    "translated": {
+                        "question": "Which measure is used to determine the interestingness of an association rule based on the ratio of observed to expected support?",
+                        "options": [
+                            "Confidence",
+                            "Lift",
+                            "Kulczynski measure",
+                            "Jaccard coefficient"
+                        ],
+                        "correctAnswer": 2,
+                        "keyword": "Association Rules"
+                    }
+                }
+            ]
+        }
+            ;
+
+        // Application state
+        const appState = {
+            currentQuestionIndex: 0,
+            userAnswers: [], // Stores user's selected option index for each question
+            language: 'ar', // 'ar' or 'en'
+            shuffledQuestions: [],
+            shuffledOptions: [],
+        };
+
+        // DOM elements
+        const elements = {
+            questionText: document.getElementById('questionText'),
+            translatedQuestionText: document.getElementById('translatedQuestionText'),
+            optionsContainer: document.getElementById('optionsContainer'),
+            translatedOptionsContainer: document.getElementById('translatedOptionsContainer'),
+            questionNumber: document.getElementById('questionNumber'),
+            translatedQuestionNumber: document.getElementById('translatedQuestionNumber'),
+            nextBtn: document.getElementById('nextBtn'),
+            prevBtn: document.getElementById('prevBtn'),
+            toggleLangBtn: document.getElementById('toggleLang'),
+            resetProgressBtn: document.getElementById('resetProgress'),
+            progressText: document.getElementById('progressText'),
+            progressBar: document.getElementById('progressBar'),
+            questionCard: document.getElementById('questionCard'),
+            flipCardBtn: document.getElementById('flipCardBtn'),
+            flipCardBackBtn: document.getElementById('flipCardBackBtn'),
+            appTitle: document.getElementById('appTitle'),
+            langText: document.getElementById('langText'),
+            resetText: document.getElementById('resetText'),
+            flipText: document.getElementById('flipText'),
+            flipBackText: document.getElementById('flipBackText'),
+            prevText: document.getElementById('prevText'),
+            nextText: document.getElementById('nextText'),
+            prevIcon: document.getElementById('prevIcon'),
+            nextIcon: document.getElementById('nextIcon'),
+            langIcon: document.getElementById('langIcon')
+        };
+
+        // Initialize the app
+        function initApp() {
+            shuffleQuestionsAndOptions();
+            renderQuestion();
+            updateNavigationButtons();
+            updateProgress();
+            updateUIForLanguage();
+        }
+
+        // Shuffle questions and their corresponding options
+        function shuffleQuestionsAndOptions() {
+            appState.shuffledQuestions = [...questionsData.questions].sort(() => Math.random() - 0.5);
+            appState.shuffledOptions = [];
+            appState.userAnswers = new Array(appState.shuffledQuestions.length).fill(null);
+
+            appState.shuffledQuestions.forEach((question) => {
+                const options = [...question.options];
+                const translatedOptions = [...question.translated.options];
+                const correctAnswer = question.correctAnswer;
+
+                const indices = options.map((_, i) => i);
+                indices.sort(() => Math.random() - 0.5);
+
+                const newShuffledOptions = indices.map(i => options[i]);
+                const newShuffledTranslatedOptions = indices.map(i => translatedOptions[i]);
+
+                const originalCorrectOptionText = question.options[correctAnswer];
+                let newCorrectAnswerIndex = newShuffledOptions.indexOf(originalCorrectOptionText);
+
+                if (newCorrectAnswerIndex === -1) {
+                    newCorrectAnswerIndex = indices.indexOf(correctAnswer);
+                }
+
+                appState.shuffledOptions.push({
+                    shuffledOptions: newShuffledOptions,
+                    shuffledTranslatedOptions: newShuffledTranslatedOptions,
+                    shuffledCorrectAnswer: newCorrectAnswerIndex,
+                });
+            });
+        }
+
+        // Render current question and its options
+        function renderQuestion() {
+            const currentQuestion = appState.shuffledQuestions[appState.currentQuestionIndex];
+            const currentOptions = appState.shuffledOptions[appState.currentQuestionIndex];
+
+            elements.questionText.textContent = currentQuestion.question;
+            elements.translatedQuestionText.textContent = currentQuestion.translated.question;
+            elements.questionNumber.textContent = `${appState.language === 'ar' ? 'سؤال' : 'Question'} ${appState.currentQuestionIndex + 1}`;
+            elements.translatedQuestionNumber.textContent = `${appState.language === 'en' ? 'Question' : 'سؤال'} ${appState.currentQuestionIndex + 1}`;
+
+            renderOptions(currentOptions);
+
+            if (appState.userAnswers[appState.currentQuestionIndex] !== null) {
+                revealAnswer();
+            }
+        }
+
+        // Render options for the current question
+        function renderOptions(optionsData) {
+            elements.optionsContainer.innerHTML = '';
+            elements.translatedOptionsContainer.innerHTML = '';
+            elements.optionsContainer.classList.remove('disabled');
+            elements.translatedOptionsContainer.classList.remove('disabled');
+
+            optionsData.shuffledOptions.forEach((option, index) => {
+                elements.optionsContainer.appendChild(createOptionElement(option, index));
+            });
+            optionsData.shuffledTranslatedOptions.forEach((option, index) => {
+                elements.translatedOptionsContainer.appendChild(createOptionElement(option, index));
+            });
+        }
+
+        // Create a single option element
+        function createOptionElement(text, index) {
+            const optionCard = document.createElement('div');
+            optionCard.className = 'option-card bg-white border border-gray-200 rounded-lg p-4 cursor-pointer transition shadow-sm hover:border-indigo-300';
+            optionCard.dataset.optionIndex = index;
+            optionCard.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-6 h-6 rounded-full border border-gray-300 mr-3 ml-3 flex-shrink-0 flex items-center justify-center">
+                        <div class="w-3 h-3 rounded-full bg-transparent answer-dot"></div>
+                    </div>
+                    <span>${text}</span>
+                </div>
+            `;
+            optionCard.addEventListener('click', () => selectOption(index));
+            return optionCard;
+        }
+
+        // Handle option selection
+        function selectOption(optionIndex) {
+            if (appState.userAnswers[appState.currentQuestionIndex] !== null) {
+                return;
+            }
+
+            appState.userAnswers[appState.currentQuestionIndex] = optionIndex;
+            revealAnswer();
+        }
+
+        // Highlight correct/incorrect answers and disable options
+        function revealAnswer() {
+            const selectedOptionIndex = appState.userAnswers[appState.currentQuestionIndex];
+            const correctOptionIndex = appState.shuffledOptions[appState.currentQuestionIndex].shuffledCorrectAnswer;
+
+            const allOptionCards = document.querySelectorAll('.option-card');
+            allOptionCards.forEach(card => {
+                const cardIndex = parseInt(card.dataset.optionIndex);
+
+                if (cardIndex === correctOptionIndex) {
+                    card.classList.add('correct-answer');
+                }
+
+                if (cardIndex === selectedOptionIndex && selectedOptionIndex !== correctOptionIndex) {
+                    card.classList.add('incorrect-answer');
+                }
+
+                if (cardIndex === selectedOptionIndex) {
+                    card.classList.add('selected');
+                    card.querySelector('.answer-dot').classList.remove('bg-transparent');
+                    card.querySelector('.answer-dot').classList.add('bg-indigo-600');
+                }
+            });
+
+            elements.optionsContainer.classList.add('disabled');
+            elements.translatedOptionsContainer.classList.add('disabled');
+        }
+
+        // Navigate to the next question
+        function goToNextQuestion() {
+            if (appState.userAnswers[appState.currentQuestionIndex] === null) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: appState.language === 'ar' ? 'يرجى اختيار إجابة' : 'Please select an answer',
+                    text: appState.language === 'ar' ? 'يجب عليك اختيار إجابة قبل المتابعة.' : 'You must select an answer to continue.',
+                    confirmButtonColor: '#4f46e5'
+                });
+                return;
+            }
+
+            if (appState.currentQuestionIndex < appState.shuffledQuestions.length - 1) {
+                appState.currentQuestionIndex++;
+                renderQuestion();
+                updateNavigationButtons();
+                updateProgress();
+            } else {
+                showResults();
+            }
+        }
+
+        // Navigate to the previous question
+        function goToPrevQuestion() {
+            if (appState.currentQuestionIndex > 0) {
+                appState.currentQuestionIndex--;
+                renderQuestion();
+                updateNavigationButtons();
+                updateProgress();
+            }
+        }
+
+        // Update the state of navigation buttons
+        function updateNavigationButtons() {
+            elements.prevBtn.disabled = appState.currentQuestionIndex === 0;
+
+            if (appState.currentQuestionIndex === appState.shuffledQuestions.length - 1) {
+                elements.nextText.textContent = appState.language === 'ar' ? 'عرض النتائج' : 'Show Results';
+            } else {
+                elements.nextText.textContent = appState.language === 'ar' ? 'التالي' : 'Next';
+            }
+            updateNextPrevIcons();
+        }
+
+        // Toggle between Arabic and English
+        function toggleLanguage() {
+            appState.language = appState.language === 'ar' ? 'en' : 'ar';
+            document.documentElement.lang = appState.language;
+            document.documentElement.dir = appState.language === 'ar' ? 'rtl' : 'ltr';
+            updateUIForLanguage();
+            renderQuestion();
+        }
+
+        // Update all UI text based on the selected language
+        function updateUIForLanguage() {
+            const isArabic = appState.language === 'ar';
+            elements.appTitle.textContent = isArabic ? 'نظام الأسئلة التفاعلية' : 'Interactive Quiz System';
+            elements.langText.textContent = isArabic ? 'English' : 'العربية';
+            elements.resetText.textContent = isArabic ? 'إعادة البدء' : 'Reset';
+            elements.flipText.textContent = isArabic ? 'عرض الترجمة' : 'View Translation';
+            elements.flipBackText.textContent = isArabic ? 'عرض الأصل' : 'View Original';
+            elements.prevText.textContent = isArabic ? 'السابق' : 'Previous';
+            elements.nextText.textContent = appState.currentQuestionIndex === appState.shuffledQuestions.length - 1
+                ? (isArabic ? 'عرض النتائج' : 'Show Results')
+                : (isArabic ? 'التالي' : 'Next');
+
+            updateNextPrevIcons();
+            updateProgress();
+        }
+
+        // Update button icons for LTR/RTL
+        function updateNextPrevIcons() {
+            const isArabic = appState.language === 'ar';
+            elements.nextBtn.innerHTML = isArabic
+                ? `${elements.nextText.textContent} <i class="fas fa-arrow-left ml-2"></i>`
+                : `${elements.nextText.textContent} <i class="fas fa-arrow-right ml-2"></i>`;
+            elements.prevBtn.innerHTML = isArabic
+                ? `<i class="fas fa-arrow-right mr-2"></i> ${elements.prevText.textContent}`
+                : `<i class="fas fa-arrow-left mr-2"></i> ${elements.prevText.textContent}`;
+        }
+
+        // Update the progress bar and text
+        function updateProgress() {
+            const answeredCount = appState.userAnswers.filter(ans => ans !== null).length;
+            const progress = (answeredCount / appState.shuffledQuestions.length) * 100;
+            elements.progressText.textContent = `${appState.language === 'ar' ? 'التقدم' : 'Progress'}: ${appState.currentQuestionIndex + 1}/${appState.shuffledQuestions.length}`;
+            elements.progressBar.style.width = `${progress}%`;
+        }
+
+        // Display the final results report
+        function showResults() {
+            let correctAnswers = 0;
+            const incorrectQuestions = [];
+
+            appState.shuffledQuestions.forEach((question, index) => {
+                const userAnswer = appState.userAnswers[index];
+                const correctAnswer = appState.shuffledOptions[index].shuffledCorrectAnswer;
+                if (userAnswer === correctAnswer) {
+                    correctAnswers++;
+                } else {
+                    incorrectQuestions.push({
+                        question: appState.language === 'ar' ? question.question : question.translated.question,
+                        userAnswer: appState.shuffledOptions[index][appState.language === 'ar' ? 'shuffledOptions' : 'shuffledTranslatedOptions'][userAnswer] || (appState.language === 'ar' ? 'لم تتم الإجابة' : 'Not Answered'),
+                        correctAnswerText: appState.shuffledOptions[index][appState.language === 'ar' ? 'shuffledOptions' : 'shuffledTranslatedOptions'][correctAnswer]
+                    });
+                }
+            });
+
+            const totalQuestions = appState.shuffledQuestions.length;
+            const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+            const isArabic = appState.language === 'ar';
+
+            let incorrectListHTML = '';
+            if (incorrectQuestions.length > 0) {
+                incorrectListHTML = `
+                    <div class="text-left mt-4 bg-gray-50 p-3 rounded-lg max-h-60 overflow-y-auto">
+                        <h4 class="font-bold text-lg mb-2">${isArabic ? 'الأسئلة غير الصحيحة:' : 'Incorrect Answers:'}</h4>
+                        <ul class="list-disc list-inside text-gray-700">
+                            ${incorrectQuestions.map(item => `
+                                <li class="mb-3">
+                                    <p class="font-semibold">${item.question}</p>
+                                    <p class="text-sm text-red-600">${isArabic ? 'إجابتك:' : 'Your answer:'} ${item.userAnswer}</p>
+                                    <p class="text-sm text-green-600">${isArabic ? 'الإجابة الصحيحة:' : 'Correct answer:'} ${item.correctAnswerText}</p>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            Swal.fire({
+                title: isArabic ? 'النتائج النهائية' : 'Final Results',
+                html: `
+                    <div class="text-center">
+                        <h3 class="text-2xl font-bold mb-2">${isArabic ? 'أكملت الاختبار!' : 'Quiz Complete!'}</h3>
+                        <p class="text-lg mb-4">${isArabic ? 'درجتك هي:' : 'Your grade is:'}</p>
+                        <div class="text-6xl font-bold text-indigo-600 mb-4">${percentage}%</div>
+                        <p class="text-lg">${isArabic ? 'الإجابات الصحيحة:' : 'Correct Answers:'} <span class="font-bold">${correctAnswers} / ${totalQuestions}</span></p>
+                        ${incorrectListHTML}
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: `<i class="fas fa-redo mr-2"></i> ${isArabic ? 'إعادة الاختبار' : 'Retest'}`,
+                cancelButtonText: isArabic ? 'إغلاق' : 'Close',
+                confirmButtonColor: '#4f46e5',
+                cancelButtonColor: '#6b7280',
+                customClass: {
+                    popup: 'w-full max-w-lg'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    resetProgress(false); // Reset without confirmation
+                }
+            });
+        }
+
+        // Reset the entire quiz
+        function resetProgress(withConfirmation = true) {
+            const performReset = () => {
+                appState.currentQuestionIndex = 0;
+                appState.userAnswers = [];
+                shuffleQuestionsAndOptions();
+                renderQuestion();
+                updateNavigationButtons();
+                updateProgress();
+                if (!withConfirmation) {
+                    Swal.close();
+                } else {
+                    Swal.fire(
+                        appState.language === 'ar' ? 'تم!' : 'Done!',
+                        appState.language === 'ar' ? 'تم إعادة تعيين الاختبار.' : 'The quiz has been reset.',
+                        'success'
+                    );
+                }
+            };
+
+            if (withConfirmation) {
+                Swal.fire({
+                    title: appState.language === 'ar' ? 'هل أنت متأكد؟' : 'Are you sure?',
+                    text: appState.language === 'ar' ? 'سيتم مسح تقدمك الحالي.' : 'Your current progress will be erased.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: appState.language === 'ar' ? 'نعم، أعد البدء' : 'Yes, reset',
+                    cancelButtonText: appState.language === 'ar' ? 'إلغاء' : 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performReset();
+                    }
+                });
+            } else {
+                performReset();
+            }
+        }
+
+        // DOM events
+        elements.nextBtn.addEventListener('click', goToNextQuestion);
+        elements.prevBtn.addEventListener('click', goToPrevQuestion);
+        elements.toggleLangBtn.addEventListener('click', toggleLanguage);
+        elements.resetProgressBtn.addEventListener('click', () => resetProgress(true));
+        elements.flipCardBtn.addEventListener('click', () => elements.questionCard.classList.add('flipped'));
+        elements.flipCardBackBtn.addEventListener('click', () => elements.questionCard.classList.remove('flipped'));
+
+        // Initialize app on load
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+
+</html>

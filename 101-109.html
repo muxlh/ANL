@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>101-109</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Base styles for the flip card functionality */
+        .flip-card {
+            perspective: 1000px;
+        }
+
+        .flip-card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            backface-visibility: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Styles for answer options */
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style to disable pointer events after an answer is selected */
+        .options-container.disabled .option-card {
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Style for the correct answer (green) */
+        .correct-answer {
+            border-color: #10b981 !important;
+            background-color: #ecfdf5 !important;
+            border-width: 2px;
+        }
+
+        /* Style for an incorrect answer (red) */
+        .incorrect-answer {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+            border-width: 2px;
+        }
+
+        .answer-dot {
+            transition: all 0.3s ease;
+        }
+
+        .option-card.selected .answer-dot {
+            background-color: #4f46e5;
+            transform: scale(1.2);
+        }
+
+        .progress-transition {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h1 id="appTitle" class="text-3xl font-bold text-indigo-700">نظام الأسئلة التفاعلية</h1>
+            <div class="flex justify-center gap-4 mt-4">
+                <button id="toggleLang"
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i id="langIcon" class="fas fa-language mr-2"></i>
+                    <span id="langText">تبديل اللغة</span>
+                </button>
+                <button id="resetProgress"
+                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i class="fas fa-redo mr-2"></i>
+                    <span id="resetText">إعادة البدء</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="max-w-3xl mx-auto">
+            <!-- Progress Bar -->
+            <div class="mb-6">
+                <div class="flex justify-between mb-2">
+                    <span id="progressText" class="font-medium">التقدم: 0/0</span>
+                    <!-- Score text removed as per request -->
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full progress-transition"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div id="questionCard" class="flip-card bg-white rounded-xl shadow-md overflow-hidden mb-6 min-h-[600px]">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <span id="questionNumber"
+                                class="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full">سؤال
+                                1</span>
+                            <button id="flipCardBtn" class="text-gray-500 hover:text-indigo-600 flex items-center">
+                                <i class="fas fa-exchange-alt mr-1"></i>
+                                <span id="flipText">عرض الترجمة</span>
+                            </button>
+                        </div>
+                        <h2 id="questionText" class="text-xl font-semibold text-gray-800 mb-6"></h2>
+                        <div id="optionsContainer" class="grid gap-4"></div>
+                    </div>
+                    <div class="flip-card-back p-6 bg-indigo-50 h-full">
+                        <div class="flex justify-between items-start mb-4">
+                            <span id="translatedQuestionNumber"
+                                class="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full">Question
+                                1</span>
+                            <button id="flipCardBackBtn" class="text-gray-500 hover:text-indigo-600 flex items-center">
+                                <i class="fas fa-exchange-alt mr-1"></i>
+                                <span id="flipBackText">عرض الأصل</span>
+                            </button>
+                        </div>
+                        <h2 id="translatedQuestionText" class="text-xl font-semibold text-gray-800 mb-6"></h2>
+                        <div id="translatedOptionsContainer" class="grid gap-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex justify-between">
+                <button id="prevBtn"
+                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition disabled:opacity-50 flex items-center"
+                    disabled>
+                    <i id="prevIcon" class="fas fa-arrow-right mr-2"></i>
+                    <span id="prevText">السابق</span>
+                </button>
+                <button id="nextBtn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <span id="nextText">التالي</span>
+                    <i id="nextIcon" class="fas fa-arrow-left ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Questions data from the combined file
+        // Questions data
+        const questionsData = {
+            "questions":
+                [
+                    {
+                        "id": 101,
+                        "question": "What is the purpose of cross-validation in evaluating the performance of the Bayes classifier?",
+                        "options": [
+                            "To preprocess the data and handle missing values",
+                            "To estimate the performance of the classifier on unseen data",
+                            "To calculate the conditional probabilities of features",
+                            "To visualize the decision boundaries of the model"
+                        ],
+                        "correctAnswer": 1,
+                        "keyword": "Cross-Validation",
+                        "translated": {
+                            "question": "ما هو الغرض من التحقق المتقاطع في تقييم أداء مصنف بايز؟",
+                            "options": [
+                                "لمعالجة البيانات والتعامل مع القيم المفقودة",
+                                "لتقدير أداء المصنف على البيانات غير المرئية",
+                                "لحساب الاحتمالات الشرطية للميزات",
+                                "لتصور حدود القرار للنموذج"
+                            ],
+                            "correctAnswer": 1,
+                            "keyword": "التحقق المتقاطع"
+                        }
+                    },
+                    {
+                        "id": 102,
+                        "question": "Which evaluation metric is commonly used to assess the performance of the Bayes classifier?",
+                        "options": [
+                            "Accuracy",
+                            "Mean squared error",
+                            "Precision",
+                            "Root mean squared error"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Evaluation Metrics",
+                        "translated": {
+                            "question": "أي مقياس تقييم شائع الاستخدام لتقييم أداء مصنف بايز؟",
+                            "options": [
+                                "الدقة (Accuracy)",
+                                "متوسط مربع الخطأ",
+                                "الدقة (Precision)",
+                                "جذر متوسط مربع الخطأ"
+                            ],
+                            "correctAnswer": 0,
+                            "keyword": "مقاييس التقييم"
+                        }
+                    },
+                    {
+                        "id": 103,
+                        "question": "What is the purpose of smoothing techniques in the Bayes classifier?",
+                        "options": [
+                            "To handle missing values in the dataset",
+                            "To avoid zero probabilities for unseen features in the training",
+                            "To calculate the conditional probabilities of features",
+                            "To reduce computational complexity"
+                        ],
+                        "correctAnswer": 1,
+                        "keyword": "Smoothing Techniques",
+                        "translated": {
+                            "question": "ما هو الغرض من تقنيات التجانس في مصنف بايز؟",
+                            "options": [
+                                "للتعامل مع القيم المفقودة في مجموعة البيانات",
+                                "لتجنب الاحتمالات الصفرية للميزات غير المرئية في التدريب",
+                                "لحساب الاحتمالات الشرطية للميزات",
+                                "لتقليل التعقيد الحسابي"
+                            ],
+                            "correctAnswer": 1,
+                            "keyword": "تقنيات التجانس"
+                        }
+                    },
+                    {
+                        "id": 104,
+                        "question": "What is the difference between supervised and unsupervised learning in the context of the Bayes classifier?",
+                        "options": [
+                            "Supervised learning requires labeled training data, while unsupervised learning does not need labels",
+                            "Supervised learning assumes independence between features, while unsupervised learning captures dependencies",
+                            "Supervised learning can handle both categorical and numerical features, while unsupervised learning can only handle categorical features",
+                            "Supervised learning is computationally more efficient than unsupervised learning"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Supervised vs Unsupervised",
+                        "translated": {
+                            "question": "ما الفرق بين التعلم الخاضع للإشراف وغير الخاضع للإشراف في سياق مصنف بايز؟",
+                            "options": [
+                                "التعلم الخاضع للإشراف يتطلب بيانات تدريب موسومة، بينما غير الخاضع للإشراف لا يحتاج إلى وسوم",
+                                "التعلم الخاضع للإشراف يفترض استقلالية الميزات، بينما غير الخاضع للإشراف يلتقط التبعيات",
+                                "التعلم الخاضع للإشراف يمكنه التعامل مع الميزات الفئوية والعددية، بينما غير الخاضع للإشراف يتعامل فقط مع الميزات الفئوية",
+                                "التعلم الخاضع للإشراف أكثر كفاءة حسابيًا من غير الخاضع للإشراف"
+                            ],
+                            "correctAnswer": 0,
+                            "keyword": "مقارنة التعلم بالإشراف وبدونه"
+                        }
+                    },
+                    {
+                        "id": 105,
+                        "question": "What is the main assumption made by the Naive Bayes classifier?",
+                        "options": [
+                            "The features are independent of each other given the class label",
+                            "The features follow a Gaussian (normal) distribution",
+                            "The class labels are evenly distributed in the training data",
+                            "The training data contains no missing values"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "Naive Bayes Assumption",
+                        "translated": {
+                            "question": "ما هو الافتراض الرئيسي الذي يقوم عليه مصنف Naive Bayes؟",
+                            "options": [
+                                "الميزات مستقلة عن بعضها البعض عند إعطاء تسمية الفئة",
+                                "الميزات تتبع توزيعًا غاوسيًا (طبيعيًا)",
+                                "تسميات الفئات موزعة بالتساوي في بيانات التدريب",
+                                "بيانات التدريب لا تحتوي على قيم مفقودة"
+                            ],
+                            "correctAnswer": 0,
+                            "keyword": "افتراض Naive Bayes"
+                        }
+                    },
+                    {
+                        "id": 106,
+                        "question": "The K-Nearest Neighbors (KNN) algorithm is used for:",
+                        "options": [
+                            "Classification",
+                            "Regression",
+                            "Clustering",
+                            "Feature selection"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "KNN Usage",
+                        "translated": {
+                            "question": "خوارزمية الجيران الأقرب (KNN) تستخدم في:",
+                            "options": [
+                                "التصنيف",
+                                "الانحدار",
+                                "التجميع",
+                                "اختيار الميزات"
+                            ],
+                            "correctAnswer": 0,
+                            "keyword": "استخدام KNN"
+                        }
+                    },
+                    {
+                        "id": 107,
+                        "question": "How does the KNN algorithm make predictions?",
+                        "options": [
+                            "By fitting a linear regression line to the data",
+                            "By calculating the mean of the nearest neighbors' values",
+                            "By assigning the majority class of the nearest neighbors",
+                            "By clustering similar instances together"
+                        ],
+                        "correctAnswer": 2,
+                        "keyword": "KNN Prediction",
+                        "translated": {
+                            "question": "كيف تقوم خوارزمية KNN بعمل التوقعات؟",
+                            "options": [
+                                "عن طريق تركيب خط انحدار خطي على البيانات",
+                                "عن طريق حساب متوسط قيم الجيران الأقرب",
+                                "عن طريق تعيين الفئة الأغلبية للجيران الأقرب",
+                                "عن طريق تجميع الحالات المتشابهة معًا"
+                            ],
+                            "correctAnswer": 2,
+                            "keyword": "توقع KNN"
+                        }
+                    },
+                    {
+                        "id": 108,
+                        "question": "What is the main parameter in the KNN (K-Nearest Neighbors) algorithm?",
+                        "options": [
+                            "Number of neighbors (K)",
+                            "Learning rate",
+                            "Regularization parameter",
+                            "Maximum tree depth"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "KNN Parameter",
+                        "translated": {
+                            "question": "ما هو المعامل الرئيسي في خوارزمية KNN (الجيران الأقرب)؟",
+                            "options": [
+                                "عدد الجيران (K)",
+                                "معدل التعلم",
+                                "معامل التنظيم",
+                                "العمق الأقصى للشجرة"
+                            ],
+                            "correctAnswer": 0,
+                            "keyword": "معامل KNN"
+                        }
+                    },
+                    {
+                        "id": 109,
+                        "question": "What happens if K is set to a very small value in the KNN (K-Nearest Neighbors) algorithm?",
+                        "options": [
+                            "The model becomes more prone to overfitting",
+                            "The model becomes more prone to underfitting",
+                            "The model achieves higher accuracy",
+                            "The model becomes computationally more efficient"
+                        ],
+                        "correctAnswer": 0,
+                        "keyword": "KNN Small K",
+                        "translated": {
+                            "question": "ما الذي يحدث إذا تم تعيين K لقيمة صغيرة جدًا في خوارزمية KNN (الجيران الأقرب)؟",
+                            "options": [
+                                "يصبح النموذج أكثر عرضة للإفراط في التخصيص (Overfitting)",
+                                "يصبح النموذج أكثر عرضة للتقليل من التخصيص (Underfitting)",
+                                "يحقق النموذج دقة أعلى",
+                                "يصبح النموذج أكثر كفاءة حسابيًا"
+                            ],
+                            "correctAnswer": 0,
+                            "keyword": "KNN مع K صغيرة"
+                        }
+                    }
+                ]
+        }
+            ;
+
+        // Application state
+        const appState = {
+            currentQuestionIndex: 0,
+            userAnswers: [], // Stores user's selected option index for each question
+            language: 'ar', // 'ar' or 'en'
+            shuffledQuestions: [],
+            shuffledOptions: [],
+        };
+
+        // DOM elements
+        const elements = {
+            questionText: document.getElementById('questionText'),
+            translatedQuestionText: document.getElementById('translatedQuestionText'),
+            optionsContainer: document.getElementById('optionsContainer'),
+            translatedOptionsContainer: document.getElementById('translatedOptionsContainer'),
+            questionNumber: document.getElementById('questionNumber'),
+            translatedQuestionNumber: document.getElementById('translatedQuestionNumber'),
+            nextBtn: document.getElementById('nextBtn'),
+            prevBtn: document.getElementById('prevBtn'),
+            toggleLangBtn: document.getElementById('toggleLang'),
+            resetProgressBtn: document.getElementById('resetProgress'),
+            progressText: document.getElementById('progressText'),
+            progressBar: document.getElementById('progressBar'),
+            questionCard: document.getElementById('questionCard'),
+            flipCardBtn: document.getElementById('flipCardBtn'),
+            flipCardBackBtn: document.getElementById('flipCardBackBtn'),
+            appTitle: document.getElementById('appTitle'),
+            langText: document.getElementById('langText'),
+            resetText: document.getElementById('resetText'),
+            flipText: document.getElementById('flipText'),
+            flipBackText: document.getElementById('flipBackText'),
+            prevText: document.getElementById('prevText'),
+            nextText: document.getElementById('nextText'),
+            prevIcon: document.getElementById('prevIcon'),
+            nextIcon: document.getElementById('nextIcon'),
+            langIcon: document.getElementById('langIcon')
+        };
+
+        // Initialize the app
+        function initApp() {
+            shuffleQuestionsAndOptions();
+            renderQuestion();
+            updateNavigationButtons();
+            updateProgress();
+            updateUIForLanguage();
+        }
+
+        // Shuffle questions and their corresponding options
+        function shuffleQuestionsAndOptions() {
+            appState.shuffledQuestions = [...questionsData.questions].sort(() => Math.random() - 0.5);
+            appState.shuffledOptions = [];
+            appState.userAnswers = new Array(appState.shuffledQuestions.length).fill(null);
+
+            appState.shuffledQuestions.forEach((question) => {
+                const options = [...question.options];
+                const translatedOptions = [...question.translated.options];
+                const correctAnswer = question.correctAnswer;
+
+                const indices = options.map((_, i) => i);
+                indices.sort(() => Math.random() - 0.5);
+
+                const newShuffledOptions = indices.map(i => options[i]);
+                const newShuffledTranslatedOptions = indices.map(i => translatedOptions[i]);
+
+                const originalCorrectOptionText = question.options[correctAnswer];
+                let newCorrectAnswerIndex = newShuffledOptions.indexOf(originalCorrectOptionText);
+
+                if (newCorrectAnswerIndex === -1) {
+                    newCorrectAnswerIndex = indices.indexOf(correctAnswer);
+                }
+
+                appState.shuffledOptions.push({
+                    shuffledOptions: newShuffledOptions,
+                    shuffledTranslatedOptions: newShuffledTranslatedOptions,
+                    shuffledCorrectAnswer: newCorrectAnswerIndex,
+                });
+            });
+        }
+
+        // Render current question and its options
+        function renderQuestion() {
+            const currentQuestion = appState.shuffledQuestions[appState.currentQuestionIndex];
+            const currentOptions = appState.shuffledOptions[appState.currentQuestionIndex];
+
+            elements.questionText.textContent = currentQuestion.question;
+            elements.translatedQuestionText.textContent = currentQuestion.translated.question;
+            elements.questionNumber.textContent = `${appState.language === 'ar' ? 'سؤال' : 'Question'} ${appState.currentQuestionIndex + 1}`;
+            elements.translatedQuestionNumber.textContent = `${appState.language === 'en' ? 'Question' : 'سؤال'} ${appState.currentQuestionIndex + 1}`;
+
+            renderOptions(currentOptions);
+
+            if (appState.userAnswers[appState.currentQuestionIndex] !== null) {
+                revealAnswer();
+            }
+        }
+
+        // Render options for the current question
+        function renderOptions(optionsData) {
+            elements.optionsContainer.innerHTML = '';
+            elements.translatedOptionsContainer.innerHTML = '';
+            elements.optionsContainer.classList.remove('disabled');
+            elements.translatedOptionsContainer.classList.remove('disabled');
+
+            optionsData.shuffledOptions.forEach((option, index) => {
+                elements.optionsContainer.appendChild(createOptionElement(option, index));
+            });
+            optionsData.shuffledTranslatedOptions.forEach((option, index) => {
+                elements.translatedOptionsContainer.appendChild(createOptionElement(option, index));
+            });
+        }
+
+        // Create a single option element
+        function createOptionElement(text, index) {
+            const optionCard = document.createElement('div');
+            optionCard.className = 'option-card bg-white border border-gray-200 rounded-lg p-4 cursor-pointer transition shadow-sm hover:border-indigo-300';
+            optionCard.dataset.optionIndex = index;
+            optionCard.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-6 h-6 rounded-full border border-gray-300 mr-3 ml-3 flex-shrink-0 flex items-center justify-center">
+                        <div class="w-3 h-3 rounded-full bg-transparent answer-dot"></div>
+                    </div>
+                    <span>${text}</span>
+                </div>
+            `;
+            optionCard.addEventListener('click', () => selectOption(index));
+            return optionCard;
+        }
+
+        // Handle option selection
+        function selectOption(optionIndex) {
+            if (appState.userAnswers[appState.currentQuestionIndex] !== null) {
+                return;
+            }
+
+            appState.userAnswers[appState.currentQuestionIndex] = optionIndex;
+            revealAnswer();
+        }
+
+        // Highlight correct/incorrect answers and disable options
+        function revealAnswer() {
+            const selectedOptionIndex = appState.userAnswers[appState.currentQuestionIndex];
+            const correctOptionIndex = appState.shuffledOptions[appState.currentQuestionIndex].shuffledCorrectAnswer;
+
+            const allOptionCards = document.querySelectorAll('.option-card');
+            allOptionCards.forEach(card => {
+                const cardIndex = parseInt(card.dataset.optionIndex);
+
+                if (cardIndex === correctOptionIndex) {
+                    card.classList.add('correct-answer');
+                }
+
+                if (cardIndex === selectedOptionIndex && selectedOptionIndex !== correctOptionIndex) {
+                    card.classList.add('incorrect-answer');
+                }
+
+                if (cardIndex === selectedOptionIndex) {
+                    card.classList.add('selected');
+                    card.querySelector('.answer-dot').classList.remove('bg-transparent');
+                    card.querySelector('.answer-dot').classList.add('bg-indigo-600');
+                }
+            });
+
+            elements.optionsContainer.classList.add('disabled');
+            elements.translatedOptionsContainer.classList.add('disabled');
+        }
+
+        // Navigate to the next question
+        function goToNextQuestion() {
+            if (appState.userAnswers[appState.currentQuestionIndex] === null) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: appState.language === 'ar' ? 'يرجى اختيار إجابة' : 'Please select an answer',
+                    text: appState.language === 'ar' ? 'يجب عليك اختيار إجابة قبل المتابعة.' : 'You must select an answer to continue.',
+                    confirmButtonColor: '#4f46e5'
+                });
+                return;
+            }
+
+            if (appState.currentQuestionIndex < appState.shuffledQuestions.length - 1) {
+                appState.currentQuestionIndex++;
+                renderQuestion();
+                updateNavigationButtons();
+                updateProgress();
+            } else {
+                showResults();
+            }
+        }
+
+        // Navigate to the previous question
+        function goToPrevQuestion() {
+            if (appState.currentQuestionIndex > 0) {
+                appState.currentQuestionIndex--;
+                renderQuestion();
+                updateNavigationButtons();
+                updateProgress();
+            }
+        }
+
+        // Update the state of navigation buttons
+        function updateNavigationButtons() {
+            elements.prevBtn.disabled = appState.currentQuestionIndex === 0;
+
+            if (appState.currentQuestionIndex === appState.shuffledQuestions.length - 1) {
+                elements.nextText.textContent = appState.language === 'ar' ? 'عرض النتائج' : 'Show Results';
+            } else {
+                elements.nextText.textContent = appState.language === 'ar' ? 'التالي' : 'Next';
+            }
+            updateNextPrevIcons();
+        }
+
+        // Toggle between Arabic and English
+        function toggleLanguage() {
+            appState.language = appState.language === 'ar' ? 'en' : 'ar';
+            document.documentElement.lang = appState.language;
+            document.documentElement.dir = appState.language === 'ar' ? 'rtl' : 'ltr';
+            updateUIForLanguage();
+            renderQuestion();
+        }
+
+        // Update all UI text based on the selected language
+        function updateUIForLanguage() {
+            const isArabic = appState.language === 'ar';
+            elements.appTitle.textContent = isArabic ? 'نظام الأسئلة التفاعلية' : 'Interactive Quiz System';
+            elements.langText.textContent = isArabic ? 'English' : 'العربية';
+            elements.resetText.textContent = isArabic ? 'إعادة البدء' : 'Reset';
+            elements.flipText.textContent = isArabic ? 'عرض الترجمة' : 'View Translation';
+            elements.flipBackText.textContent = isArabic ? 'عرض الأصل' : 'View Original';
+            elements.prevText.textContent = isArabic ? 'السابق' : 'Previous';
+            elements.nextText.textContent = appState.currentQuestionIndex === appState.shuffledQuestions.length - 1
+                ? (isArabic ? 'عرض النتائج' : 'Show Results')
+                : (isArabic ? 'التالي' : 'Next');
+
+            updateNextPrevIcons();
+            updateProgress();
+        }
+
+        // Update button icons for LTR/RTL
+        function updateNextPrevIcons() {
+            const isArabic = appState.language === 'ar';
+            elements.nextBtn.innerHTML = isArabic
+                ? `${elements.nextText.textContent} <i class="fas fa-arrow-left ml-2"></i>`
+                : `${elements.nextText.textContent} <i class="fas fa-arrow-right ml-2"></i>`;
+            elements.prevBtn.innerHTML = isArabic
+                ? `<i class="fas fa-arrow-right mr-2"></i> ${elements.prevText.textContent}`
+                : `<i class="fas fa-arrow-left mr-2"></i> ${elements.prevText.textContent}`;
+        }
+
+        // Update the progress bar and text
+        function updateProgress() {
+            const answeredCount = appState.userAnswers.filter(ans => ans !== null).length;
+            const progress = (answeredCount / appState.shuffledQuestions.length) * 100;
+            elements.progressText.textContent = `${appState.language === 'ar' ? 'التقدم' : 'Progress'}: ${appState.currentQuestionIndex + 1}/${appState.shuffledQuestions.length}`;
+            elements.progressBar.style.width = `${progress}%`;
+        }
+
+        // Display the final results report
+        function showResults() {
+            let correctAnswers = 0;
+            const incorrectQuestions = [];
+
+            appState.shuffledQuestions.forEach((question, index) => {
+                const userAnswer = appState.userAnswers[index];
+                const correctAnswer = appState.shuffledOptions[index].shuffledCorrectAnswer;
+                if (userAnswer === correctAnswer) {
+                    correctAnswers++;
+                } else {
+                    incorrectQuestions.push({
+                        question: appState.language === 'ar' ? question.question : question.translated.question,
+                        userAnswer: appState.shuffledOptions[index][appState.language === 'ar' ? 'shuffledOptions' : 'shuffledTranslatedOptions'][userAnswer] || (appState.language === 'ar' ? 'لم تتم الإجابة' : 'Not Answered'),
+                        correctAnswerText: appState.shuffledOptions[index][appState.language === 'ar' ? 'shuffledOptions' : 'shuffledTranslatedOptions'][correctAnswer]
+                    });
+                }
+            });
+
+            const totalQuestions = appState.shuffledQuestions.length;
+            const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+            const isArabic = appState.language === 'ar';
+
+            let incorrectListHTML = '';
+            if (incorrectQuestions.length > 0) {
+                incorrectListHTML = `
+                    <div class="text-left mt-4 bg-gray-50 p-3 rounded-lg max-h-60 overflow-y-auto">
+                        <h4 class="font-bold text-lg mb-2">${isArabic ? 'الأسئلة غير الصحيحة:' : 'Incorrect Answers:'}</h4>
+                        <ul class="list-disc list-inside text-gray-700">
+                            ${incorrectQuestions.map(item => `
+                                <li class="mb-3">
+                                    <p class="font-semibold">${item.question}</p>
+                                    <p class="text-sm text-red-600">${isArabic ? 'إجابتك:' : 'Your answer:'} ${item.userAnswer}</p>
+                                    <p class="text-sm text-green-600">${isArabic ? 'الإجابة الصحيحة:' : 'Correct answer:'} ${item.correctAnswerText}</p>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            Swal.fire({
+                title: isArabic ? 'النتائج النهائية' : 'Final Results',
+                html: `
+                    <div class="text-center">
+                        <h3 class="text-2xl font-bold mb-2">${isArabic ? 'أكملت الاختبار!' : 'Quiz Complete!'}</h3>
+                        <p class="text-lg mb-4">${isArabic ? 'درجتك هي:' : 'Your grade is:'}</p>
+                        <div class="text-6xl font-bold text-indigo-600 mb-4">${percentage}%</div>
+                        <p class="text-lg">${isArabic ? 'الإجابات الصحيحة:' : 'Correct Answers:'} <span class="font-bold">${correctAnswers} / ${totalQuestions}</span></p>
+                        ${incorrectListHTML}
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: `<i class="fas fa-redo mr-2"></i> ${isArabic ? 'إعادة الاختبار' : 'Retest'}`,
+                cancelButtonText: isArabic ? 'إغلاق' : 'Close',
+                confirmButtonColor: '#4f46e5',
+                cancelButtonColor: '#6b7280',
+                customClass: {
+                    popup: 'w-full max-w-lg'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    resetProgress(false); // Reset without confirmation
+                }
+            });
+        }
+
+        // Reset the entire quiz
+        function resetProgress(withConfirmation = true) {
+            const performReset = () => {
+                appState.currentQuestionIndex = 0;
+                appState.userAnswers = [];
+                shuffleQuestionsAndOptions();
+                renderQuestion();
+                updateNavigationButtons();
+                updateProgress();
+                if (!withConfirmation) {
+                    Swal.close();
+                } else {
+                    Swal.fire(
+                        appState.language === 'ar' ? 'تم!' : 'Done!',
+                        appState.language === 'ar' ? 'تم إعادة تعيين الاختبار.' : 'The quiz has been reset.',
+                        'success'
+                    );
+                }
+            };
+
+            if (withConfirmation) {
+                Swal.fire({
+                    title: appState.language === 'ar' ? 'هل أنت متأكد؟' : 'Are you sure?',
+                    text: appState.language === 'ar' ? 'سيتم مسح تقدمك الحالي.' : 'Your current progress will be erased.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: appState.language === 'ar' ? 'نعم، أعد البدء' : 'Yes, reset',
+                    cancelButtonText: appState.language === 'ar' ? 'إلغاء' : 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performReset();
+                    }
+                });
+            } else {
+                performReset();
+            }
+        }
+
+        // DOM events
+        elements.nextBtn.addEventListener('click', goToNextQuestion);
+        elements.prevBtn.addEventListener('click', goToPrevQuestion);
+        elements.toggleLangBtn.addEventListener('click', toggleLanguage);
+        elements.resetProgressBtn.addEventListener('click', () => resetProgress(true));
+        elements.flipCardBtn.addEventListener('click', () => elements.questionCard.classList.add('flipped'));
+        elements.flipCardBackBtn.addEventListener('click', () => elements.questionCard.classList.remove('flipped'));
+
+        // Initialize app on load
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+
+</html>
